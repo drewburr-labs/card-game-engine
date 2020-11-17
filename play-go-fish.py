@@ -25,7 +25,8 @@ class Player():
 
 players = [
     Player('player 1'),
-    Player('player 2')
+    Player('player 2'),
+    Player('player 3')
 ]
 
 
@@ -79,6 +80,9 @@ while playing:
     # Left-most player goes first
     player = players.pop(0)
 
+    # And always asks the next player for a card
+    next_player = players[0]
+
     # Play cards that have existing sets
     for value in player.hand:
         # If value is on the table
@@ -88,52 +92,55 @@ while playing:
             print(f"{player.name}: Completed the set of {value}'s")
             player.print_hand()
 
-    # Ask next player for a card
-    ask_card = player.hand[0]
-    next_player = players[0]
+    # If the player has an empty hand due to completing a set
+    if len(player.hand) != 0:
 
-    card_count = next_player.hand.count(ask_card)
-    print(f"{player.name}: Asked {next_player.name} for a {ask_card}.")
+        # Ask next player for a card
+        ask_card = player.hand[0]
 
-    if card_count > 0:
-        for x in range(card_count):
-            next_player.hand.remove(ask_card)
-            player.hand.append(ask_card)
+        card_count = next_player.hand.count(ask_card)
+        print(f"{player.name}: Asked {next_player.name} for a {ask_card}.")
 
-        player.hand.sort()
-        print(f"{player.name}: Took {card_count} {ask_card}(s) from {next_player.name}")
-        player.print_hand()
-        next_player.print_hand()
-    else:
-        print(f"{next_player.name}: Does not have a {ask_card}. Go fish.")
-        draw_card = 1 + pile.pop() % 13
-        player.hand.append(draw_card)
-        player.hand.sort()
+        if card_count > 0:
+            for x in range(card_count):
+                next_player.hand.remove(ask_card)
+                player.hand.append(ask_card)
 
-        print(f"{player.name}: Drew a {draw_card}.")
-        player.print_hand()
+            player.hand.sort()
+            print(
+                f"{player.name}: Took {card_count} {ask_card}(s) from {next_player.name}")
+            player.print_hand()
+            next_player.print_hand()
+        else:
+            print(f"{next_player.name}: Does not have a {ask_card}. Go fish.")
+            draw_card = 1 + pile.pop() % 13
+            player.hand.append(draw_card)
+            player.hand.sort()
 
-        if draw_card == ask_card:
-            another_turn = True
-            print(f"{player.name}: Gets to take another turn.")
-
-    # Player places down sets of 3 or more
-    for value in player.hand:
-        # Get the number of times the value appears
-        count = player.hand.count(value)
-
-        # If value appears 3 or more times, the player has a set
-        if count >= 3:
-            print(f"{player.name}: Lays down a set of {count} {value}'s")
-            # Remove each value found
-            for x in range(count):
-                player.hand.remove(value)
-                table[value] = player.name
-
+            print(f"{player.name}: Drew a {draw_card}.")
             player.print_hand()
 
-    # Check if the game is over
-    if len(player.hand) == 0 or len(next_player.hand) == 0:
+            if draw_card == ask_card:
+                another_turn = True
+                print(f"{player.name}: Gets to take another turn.")
+
+        # Player places down sets of 3 or more
+        for value in player.hand:
+            # Get the number of times the value appears
+            count = player.hand.count(value)
+
+            # If value appears 3 or more times, the player has a set
+            if count >= 3:
+                print(f"{player.name}: Lays down a set of {count} {value}'s")
+                # Remove each value found
+                for x in range(count):
+                    player.hand.remove(value)
+                    table[value] = player.name
+
+                player.print_hand()
+
+    # Check if the game is over (A player runs out of cards, or deck is empty)
+    if len(player.hand) == 0 or len(next_player.hand) == 0 or len(pile) == 0:
         # Someone ran out of cards. End the game.
         playing = False
         players.append(player)
