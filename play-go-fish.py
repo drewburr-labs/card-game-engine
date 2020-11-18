@@ -17,10 +17,46 @@ print(f"Pile: {pile}")
 class Player():
     def __init__(self, name):
         self.name = name
-        self.hand = list()
+        self._hand = list()
+
+    # Provide a way to get the player's hand
+    @property
+    def hand(self):
+        return list(self._hand)
 
     def print_hand(self):
-        print(f"{self.name}'s hand: {self.hand}")
+        print(f"{self.name}'s hand: {self._hand}")
+
+    def add_cards(self, cards):
+        """
+        Adds cards to the player's hand.
+        Hand is always re-sorted.
+        """
+        for value in cards:
+            self._hand.append(value)
+
+        self._hand.sort()
+
+    def play_books(self):
+        """
+        Returns a list of books in-hand.
+        The returned cards are removed from the player's hand.
+        """
+        # {value: count}
+        books = dict()
+        for value in self._hand:
+            # Get the number of times the value appears
+            count = self._hand.count(value)
+
+            # If value appears 4 times, the player has a book
+            if count == 4:
+                # Remove each value found
+                for _ in range(count):
+                    self._hand.remove(value)
+
+                books[value] = count
+
+        return books
 
 
 players = [
@@ -29,47 +65,45 @@ players = [
     Player('player 3')
 ]
 
-
 # value: player_name
 table = {}
 
 # Deal cards to players
 for player in players:
-    for x in range(7):
-        value = 1 + pile.pop() % 13
-        player.hand.append(value)
+    # Take 7 cards from the pile
+    cards = list()
+    for x in range(5):
+        cards.append(1 + pile.pop() % 13)
 
-    player.hand.sort()
+    # Pass cards to the player
+    player.add_cards(cards)
     player.print_hand()
 
 
-# Players place down sets of 3 or more
-for player in players:
+def add_books_to_table(books):
+    """
+    Used to add books to the table.
+    Throws ValueError if book is already on the table.
+    """
+    # Place books on the table
+    for value, count in books.items():
+        # Player should have removed cards from hands. Print log
+        print(f"{player.name}: Lays down a set of {count} {value}'s")
+        player.print_hand()
 
-    for value in player.hand:
-        # Get the number of times the value appears
-        count = player.hand.count(value)
-
-        # If value appears 3 or more times, the player has a set
-        if count >= 3:
-            print(f"{player.name}: Lays down a set of {count} {value}'s")
-            # Remove each value found
-            for x in range(count):
-                player.hand.remove(value)
-                table[value] = player.name
-
-            player.print_hand()
-
-# Players play cards that have existing sets
-for player in players:
-
-    for value in player.hand:
-        # If value is on the table
+        # Check if book is already on the table
         if table.get(value):
-            # Remove the card from hand
-            player.hand.remove(value)
-            print(f"{player.name}: Completed the set of {value}'s")
-            player.print_hand()
+            raise ValueError(
+                f"{player.name} played an existing book! Value: {value} Count: {count}")
+        else:
+            # Add book to table
+            table[value] = player.name
+
+
+# Players play existing books
+for player in players:
+    books = player.play_books()
+    add_books_to_table(books)
 
 playing = True
 while playing:
@@ -83,61 +117,38 @@ while playing:
     # And always asks the next player for a card
     next_player = players[0]
 
-    # Play cards that have existing sets
-    for value in player.hand:
-        # If value is on the table
-        if table.get(value):
-            # Remove the card from hand
-            player.hand.remove(value)
-            print(f"{player.name}: Completed the set of {value}'s")
-            player.print_hand()
+    # Ask next player for a card
+    ask_card = player.hand[0]
 
-    # If the player has an empty hand due to completing a set
-    if len(player.hand) != 0:
+    card_count = next_player.hand.count(ask_card)
+    print(f"{player.name}: Asked {next_player.name} for a {ask_card}.")
 
-        # Ask next player for a card
-        ask_card = player.hand[0]
+    if card_count > 0:
+        for x in range(card_count):
+            next_player.hand.remove(ask_card)
+            player.hand.append(ask_card)
 
-        card_count = next_player.hand.count(ask_card)
-        print(f"{player.name}: Asked {next_player.name} for a {ask_card}.")
+        player.hand.sort()
+        print(
+            f"{player.name}: Took {card_count} {ask_card}(s) from {next_player.name}")
+        player.print_hand()
+        next_player.print_hand()
+    else:
+        print(f"{next_player.name}: Does not have a {ask_card}. Go fish.")
+        draw_card = 1 + pile.pop() % 13
+        player.hand.append(draw_card)
+        player.hand.sort()
 
-        if card_count > 0:
-            for x in range(card_count):
-                next_player.hand.remove(ask_card)
-                player.hand.append(ask_card)
+        print(f"{player.name}: Drew a {draw_card}.")
+        player.print_hand()
 
-            player.hand.sort()
-            print(
-                f"{player.name}: Took {card_count} {ask_card}(s) from {next_player.name}")
-            player.print_hand()
-            next_player.print_hand()
-        else:
-            print(f"{next_player.name}: Does not have a {ask_card}. Go fish.")
-            draw_card = 1 + pile.pop() % 13
-            player.hand.append(draw_card)
-            player.hand.sort()
+        if draw_card == ask_card:
+            another_turn = True
+            print(f"{player.name}: Gets to take another turn.")
 
-            print(f"{player.name}: Drew a {draw_card}.")
-            player.print_hand()
-
-            if draw_card == ask_card:
-                another_turn = True
-                print(f"{player.name}: Gets to take another turn.")
-
-        # Player places down sets of 3 or more
-        for value in player.hand:
-            # Get the number of times the value appears
-            count = player.hand.count(value)
-
-            # If value appears 3 or more times, the player has a set
-            if count >= 3:
-                print(f"{player.name}: Lays down a set of {count} {value}'s")
-                # Remove each value found
-                for x in range(count):
-                    player.hand.remove(value)
-                    table[value] = player.name
-
-                player.print_hand()
+    # Player places down sets of 3 or more
+    books = player.play_books()
+    add_books_to_table(books)
 
     # Check if the game is over (A player runs out of cards, or deck is empty)
     if len(player.hand) == 0 or len(next_player.hand) == 0 or len(pile) == 0:
