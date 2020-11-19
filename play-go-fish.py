@@ -16,12 +16,18 @@ print(f"Pile: {pile}")
 
 class Player():
     def __init__(self, name):
+        # The name of the player
         self.name = name
+        # The player's hand. This is a private variable.
         self._hand = list()
+        # A list of names of the opposing players.
+        self.other_players = list()
 
-    # Provide a way to get the player's hand
     @property
     def hand(self):
+        """
+        Provides a read-only view of the player's hand.
+        """
         return list(self._hand)
 
     def print_hand(self):
@@ -41,6 +47,7 @@ class Player():
         """
         Returns a list of books in-hand.
         The returned cards are removed from the player's hand.
+        Returns: list[int]
         """
         # {value: count}
         books = dict()
@@ -58,6 +65,40 @@ class Player():
 
         return books
 
+    def respond_to_player(self, requested_value):
+        """
+        Used to respond to card requests from other players.
+        Returned cards are removed from the player's hand.
+        Returns: list[int]
+        """
+        count = self._hand.count(requested_value)
+
+        for _ in range(count):
+            self._hand.remove(requested_value)
+
+        return [requested_value] * count
+
+    def start_turn(self, data=None):
+        """
+        Called to start the player's turn.
+        This is where any/all game logic should be implemented.
+        Returns tuple(str, int):
+            The first element is the name of a player to request cards from
+            The second element is the card value being requested
+        """
+
+        # Ask a random player for a card
+        from_player = random.choice(self.other_players)
+        # Ask for a random card value
+        card_value = random.choice(self._hand)
+
+        return from_player, card_value
+
+
+class RuleError(Exception):
+    """Raised when a player breaks the rules."""
+    pass
+
 
 players = [
     Player('player 1'),
@@ -67,6 +108,19 @@ players = [
 
 # value: player_name
 table = {}
+
+# Define other players
+player_names = list()
+for player in players:
+    player_names.append(player.name)
+
+print(player_names)
+
+for player in players:
+    player.other_players = list(player_names)
+    player.other_players.remove(player.name)
+    print(player.other_players)
+
 
 # Deal cards to players
 for player in players:
@@ -93,11 +147,23 @@ def add_books_to_table(books):
 
         # Check if book is already on the table
         if table.get(value):
-            raise ValueError(
+            raise RuleError(
                 f"{player.name} played an existing book! Value: {value} Count: {count}")
         else:
             # Add book to table
             table[value] = player.name
+
+
+def get_player(player_name):
+    """
+    Used to get a player, by name.
+    """
+
+    for player in players:
+        if player.name == player_name:
+            return player
+
+    return None
 
 
 # Players play existing books
@@ -110,48 +176,63 @@ while playing:
 
     # Reset variables
     another_turn = False
+    cards = list()
 
     # Left-most player goes first
     player = players.pop(0)
 
-    # And always asks the next player for a card
-    next_player = players[0]
+    req_player_name, card_value = player.start_turn()
 
-    # Ask next player for a card
-    ask_card = player.hand[0]
+    req_player = get_player(req_player_name)
 
-    card_count = next_player.hand.count(ask_card)
-    print(f"{player.name}: Asked {next_player.name} for a {ask_card}.")
+    print(f"{player.name} asked {req_player.name} for {card_value}s.")
 
-    if card_count > 0:
-        for x in range(card_count):
-            next_player.hand.remove(ask_card)
-            player.hand.append(ask_card)
-
-        player.hand.sort()
-        print(
-            f"{player.name}: Took {card_count} {ask_card}(s) from {next_player.name}")
-        player.print_hand()
-        next_player.print_hand()
+    # Check if player requested a card in their hand
+    if player.hand.count(card_value):
+        cards = req_player.respond_to_player(card_value)
     else:
-        print(f"{next_player.name}: Does not have a {ask_card}. Go fish.")
+        raise RuleError(
+            f"{player.name}: Does not have a {card_value} in-hand.")
+
+    if cards:
+        # Ensure all cards have the same value
+        if len(cards) == cards.count(cards[0]):
+            print(
+                f"{req_player.name}: Gives {len(cards)} {cards[0]} to {player.name}")
+
+            # Ensure req_player removed cards from hand
+            if req_player.hand.count(cards[0]):
+                raise RuleError(
+                    f"{req_player.name} did not remove cards from their hand.")
+
+        else:
+            print(cards)  # Debugging
+            raise RuleError(
+                f"{req_player.name} returned multiple card values.")
+    else:
+        print(f"{req_player.name}: Does not have a {card_value}. Go fish.")
+
+        # Ensure req_player did not have the card
+        if req_player.hand.count(card_value):
+            raise RuleError(f"{req_player.name} had a {card_value} in-hand.")
+
         draw_card = 1 + pile.pop() % 13
-        player.hand.append(draw_card)
-        player.hand.sort()
-
+        cards.append(draw_card)
         print(f"{player.name}: Drew a {draw_card}.")
-        player.print_hand()
 
-        if draw_card == ask_card:
+        if draw_card == card_value:
             another_turn = True
             print(f"{player.name}: Gets to take another turn.")
 
-    # Player places down sets of 3 or more
+    player.add_cards(cards)
     books = player.play_books()
     add_books_to_table(books)
 
+    player.print_hand()
+    req_player.print_hand()
+
     # Check if the game is over (A player runs out of cards, or deck is empty)
-    if len(player.hand) == 0 or len(next_player.hand) == 0 or len(pile) == 0:
+    if len(player.hand) == 0 or len(req_player.hand) == 0 or len(pile) == 0:
         # Someone ran out of cards. End the game.
         playing = False
         players.append(player)
