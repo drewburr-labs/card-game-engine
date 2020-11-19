@@ -143,7 +143,6 @@ def add_books_to_table(books):
     for value, count in books.items():
         # Player should have removed cards from hands. Print log
         print(f"{player.name}: Lays down a set of {count} {value}'s")
-        player.print_hand()
 
         # Check if book is already on the table
         if table.get(value):
