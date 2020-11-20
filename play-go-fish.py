@@ -119,7 +119,6 @@ print(player_names)
 for player in players:
     player.other_players = list(player_names)
     player.other_players.remove(player.name)
-    print(player.other_players)
 
 
 # Deal cards to players
